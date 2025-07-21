@@ -1,21 +1,26 @@
 import streamlit as st
 from llama_cpp import Llama
-import os
 import urllib.request
+import tempfile
 
-# Load GGUF model from Hugging Face if not already downloaded
-MODEL_PATH = "BioMistral-7B-GGUF/BioMistral-7B.Q4_K_M.gguf"
+# Constants
 MODEL_URL = "https://huggingface.co/TheBloke/BioMistral-7B-GGUF/resolve/main/BioMistral-7B.Q4_K_M.gguf"
 
-if not os.path.exists(MODEL_PATH):
+@st.cache_data(show_spinner=False)
+def download_model():
     st.info("Downloading BioMistral model from Hugging Face. Please wait ⏳...")
-    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-    urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+    # Create a temporary file to store the model
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".gguf")
+    urllib.request.urlretrieve(MODEL_URL, temp_file.name)
     st.success("Model downloaded successfully! ✅")
+    return temp_file.name
+
+# Download model on app startup
+model_path = download_model()
 
 # Load GGUF model
 llm = Llama(
-    model_path=MODEL_PATH,
+    model_path=model_path,
     n_gpu_layers=20,
     n_ctx=2048,
     n_threads=os.cpu_count(),
@@ -78,7 +83,7 @@ Doctor:"""
         reply = output["choices"][0]["text"].strip()
 
     st.session_state.messages.append({"role": "assistant", "content": reply})
-    st.rerun()
+    st.experimental_rerun()
 
 # Clear button
 if st.button("🧹 Clear Chat"):
@@ -91,4 +96,4 @@ if st.button("🧹 Clear Chat"):
             )
         }
     ]
-    st.rerun()
+    st.experimental_rerun()
